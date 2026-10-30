@@ -1,4 +1,4 @@
-name: Deploy Damayanti OTP Dashboard to GitHub Pages
+name: Deploy Damayanti OTP Live Portal to GitHub Pages
 
 on:
   push:
@@ -30,16 +30,16 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: dashboard/package-lock.json
+          cache-dependency-path: test-portal/package-lock.json
 
-      - name: Install Dashboard Dependencies
+      - name: Install Dependencies
         run: |
-          cd dashboard
+          cd test-portal
           npm ci
 
-      - name: Build Dashboard
+      - name: Build Live Portal & Dashboard Suite
         run: |
-          cd dashboard
+          cd test-portal
           npm run build
 
       - name: Setup Pages
@@ -48,7 +48,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'dashboard/dist'
+          path: 'test-portal/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment

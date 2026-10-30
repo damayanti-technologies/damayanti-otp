@@ -4,11 +4,17 @@ import { LoginStep } from './components/LoginStep';
 import { OtpStep } from './components/OtpStep';
 import { SuccessStep } from './components/SuccessStep';
 import { DevDashboard } from './components/DevDashboard';
+import { AndroidGuideView } from './components/AndroidGuideView';
+import { DashboardView } from './dashboard/App';
 import { api } from './services/api';
 import { HealthResponse, VerifyOtpResponse, SmsJobStatusResponse, ApiTrace, SessionResponse } from './types/auth';
 
 export const App: React.FC = () => {
-  // Navigation / Step state
+  // Master navigation: portal | dashboard | android
+  const [activeMainTab, setActiveMainTab] = useState<'portal' | 'dashboard' | 'android'>('portal');
+  const [serverUrl, setServerUrlState] = useState<string>(api.getBaseUrl());
+
+  // Portal flow step state
   const [currentStep, setCurrentStep] = useState<'login' | 'otp' | 'success'>('login');
 
   // Auth flow state
@@ -78,6 +84,11 @@ export const App: React.FC = () => {
   }, [correlationId, currentStep]);
 
   // Handlers
+  const handleUpdateServerUrl = (url: string) => {
+    api.setBaseUrl(url);
+    setServerUrlState(url);
+  };
+
   const handleSendOtp = async (fullPhone: string) => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -152,64 +163,87 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#070B14] flex flex-col justify-between selection:bg-blue-600/30 selection:text-white">
-      {/* Top Header */}
+      {/* Top Universal Header */}
       <Header
         health={health}
         isBackendHealthy={isBackendHealthy}
         onRefreshHealth={fetchHealth}
+        activeTab={activeMainTab}
+        onSelectTab={setActiveMainTab}
+        serverUrl={serverUrl}
+        onUpdateServerUrl={handleUpdateServerUrl}
       />
 
-      {/* Main Form Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 flex flex-col items-center justify-center">
-        {currentStep === 'login' && (
-          <LoginStep
-            isLoading={isLoading}
-            error={errorMessage}
-            onSendOtp={handleSendOtp}
-            defaultPhone="9876543210"
-            complianceMode={health?.complianceMode || 'DEVELOPMENT_MOCK'}
-          />
+      {/* Main Container */}
+      <div className="flex-1 w-full">
+        {/* VIEW 1: Live Authentication Testing Portal */}
+        {activeMainTab === 'portal' && (
+          <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 flex flex-col items-center justify-center">
+            {currentStep === 'login' && (
+              <LoginStep
+                isLoading={isLoading}
+                error={errorMessage}
+                onSendOtp={handleSendOtp}
+                defaultPhone="9876543210"
+                complianceMode={health?.complianceMode || 'DEVELOPMENT_MOCK'}
+              />
+            )}
+
+            {currentStep === 'otp' && (
+              <OtpStep
+                phoneNumber={phoneNumber}
+                correlationId={correlationId || ''}
+                cooldownSeconds={cooldownSeconds}
+                devCode={devCode}
+                isLoading={isLoading}
+                error={errorMessage}
+                onVerify={handleVerifyOtp}
+                onResend={handleResendOtp}
+                onChangeNumber={handleChangeNumber}
+              />
+            )}
+
+            {currentStep === 'success' && authData && (
+              <SuccessStep
+                authData={authData}
+                onLogout={handleLogout}
+                onCheckSession={handleCheckSession}
+              />
+            )}
+
+            {/* Live Diagnostics & API Tracer Dashboard */}
+            <DevDashboard
+              health={health}
+              smsJobStatus={smsJobStatus}
+              traces={traces}
+              correlationId={correlationId}
+              onRefreshAll={fetchHealth}
+              isLoadingHealth={isLoadingHealth}
+            />
+          </main>
         )}
 
-        {currentStep === 'otp' && (
-          <OtpStep
-            phoneNumber={phoneNumber}
-            correlationId={correlationId || ''}
-            cooldownSeconds={cooldownSeconds}
-            devCode={devCode}
-            isLoading={isLoading}
-            error={errorMessage}
-            onVerify={handleVerifyOtp}
-            onResend={handleResendOtp}
-            onChangeNumber={handleChangeNumber}
-          />
+        {/* VIEW 2: Full Admin Dashboard */}
+        {activeMainTab === 'dashboard' && (
+          <div className="w-full">
+            <DashboardView />
+          </div>
         )}
 
-        {currentStep === 'success' && authData && (
-          <SuccessStep
-            authData={authData}
-            onLogout={handleLogout}
-            onCheckSession={handleCheckSession}
-          />
+        {/* VIEW 3: Android Gateway Guide & APK Download */}
+        {activeMainTab === 'android' && (
+          <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <AndroidGuideView />
+          </main>
         )}
-
-        {/* Live Diagnostics Dashboard */}
-        <DevDashboard
-          health={health}
-          smsJobStatus={smsJobStatus}
-          traces={traces}
-          correlationId={correlationId}
-          onRefreshAll={fetchHealth}
-          isLoadingHealth={isLoadingHealth}
-        />
-      </main>
+      </div>
 
       {/* Footer */}
       <footer className="border-t border-[#1A243B] bg-[#0A0F1D]/80 py-5 text-center text-xs text-gray-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>&copy; 2026 Damayanti Technologies. Self-Hosted Sovereign Infrastructure.</span>
           <span className="font-mono text-[11px] text-gray-400">
-            Damayanti OTP v1.0.0 • Connected to Node.js / Express Core
+            Damayanti OTP Platform • Live GitHub Preview & Production Engine
           </span>
         </div>
       </footer>
