@@ -1,0 +1,185 @@
+// Prisma schema for Damayanti OTP Authentication Platform
+// Default database is SQLite for initial zero-friction development on Windows 11.
+// All schema fields and types are strictly compatible with PostgreSQL for production migration.
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Admin {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  role         String         @default("ADMIN")
+  isActive     Boolean        @default(true)
+  lastLoginAt  DateTime?
+  sessions     LoginSession[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Application {
+  id              String        @id @default(uuid())
+  appId           String        @unique // e.g. "damayanti_arrout"
+  name            String        // Display Name, e.g. "ARROUT Platform"
+  description     String?
+  allowedOrigins  String        @default("[]") // JSON string array of origins
+  isEnabled       Boolean       @default(true)
+  rateLimitPerMin Int           @default(60)
+  apiKeys         APIKey[]
+  otpRequests     OTPRequest[]
+  smsJobs         SMSJob[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model APIKey {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  keyPrefix     String      // e.g. "dmy_live_"
+  keyHash       String      @unique // Argon2id hash of API Secret
+  name          String
+  expiresAt     DateTime?
+  isRevoked     Boolean     @default(false)
+  lastUsedAt    DateTime?
+  createdAt     DateTime    @default(now())
+}
+
+model User {
+  id            String         @id @default(uuid())
+  phoneNumber   String         @unique // E.164 normalized format, e.g. "+919876543210"
+  isBlocked     Boolean        @default(false)
+  lastLoginAt   DateTime?
+  otpRequests   OTPRequest[]
+  sessions      LoginSession[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model OTPRequest {
+  id                String      @id @default(uuid())
+  correlationId     String      @unique @default(uuid())
+  applicationId     String
+  application       Application @relation(fields: [applicationId], references: [id])
+  userId            String?
+  user              User?       @relation(fields: [userId], references: [id])
+  phoneNumber       String      // E.164 format
+  otpHash           String      // Argon2id hash of OTP - NEVER stored in plain text
+  expiresAt         DateTime
+  attemptsRemaining Int         @default(5)
+  isVerified        Boolean     @default(false)
+  isInvalidated     Boolean     @default(false)
+  ipAddress         String?
+  userAgent         String?
+  smsJob            SMSJob?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([phoneNumber, isVerified, expiresAt])
+  @@index([correlationId])
+}
+
+model SMSJob {
+  id              String         @id @default(uuid())
+  otpRequestId    String?        @unique
+  otpRequest      OTPRequest?    @relation(fields: [otpRequestId], references: [id])
+  applicationId   String
+  application     Application    @relation(fields: [applicationId], references: [id])
+  recipientNumber String
+  messageBody     String
+  status          String         @default("QUEUED") // QUEUED, ASSIGNED, SENDING, SUBMITTED, FAILED, EXPIRED
+  retryCount      Int            @default(0)
+  maxRetries      Int            @default(3)
+  deviceId        String?
+  device          AndroidDevice? @relation(fields: [deviceId], references: [id])
+  assignedAt      DateTime?
+  submittedAt     DateTime?
+  failedAt        DateTime?
+  failureReason   String?
+  logs            SMSLog[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([recipientNumber])
+}
+
+model SMSLog {
+  id          String   @id @default(uuid())
+  smsJobId    String
+  smsJob      SMSJob   @relation(fields: [smsJobId], references: [id], onDelete: Cascade)
+  status      String
+  rawResponse String?
+  timestamp   DateTime @default(now())
+}
+
+model AndroidDevice {
+  id             String             @id @default(uuid())
+  deviceId       String             @unique // Hardware ID / UUID generated on app install
+  name           String             // e.g. "Galaxy A35 - BSNL Gateway"
+  model          String?            // "SM-A356E"
+  androidVersion String?            // "14"
+  simCarrier     String?            // "BSNL"
+  simSlot        Int?               @default(0)
+  status         String             @default("OFFLINE") // ONLINE, OFFLINE, PAUSED, DISABLED
+  batteryLevel   Int?
+  isCharging     Boolean?
+  lastHeartbeat  DateTime?
+  ipAddress      String?
+  credentials    DeviceCredential[]
+  smsJobs        SMSJob[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model DeviceCredential {
+  id            String        @id @default(uuid())
+  deviceId      String
+  device        AndroidDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  tokenHash     String        @unique // Argon2id hash of device bearer token
+  signingSecret String        // HMAC-SHA256 secret for outbound request signing
+  expiresAt     DateTime
+  isRevoked     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+}
+
+model LoginSession {
+  id           String    @id @default(uuid())
+  adminId      String?
+  admin        Admin?    @relation(fields: [adminId], references: [id])
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
+  sessionToken String    @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  isRevoked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+}
+
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  eventType String   // "BRUTE_FORCE_ATTEMPT", "INVALID_DEVICE_SIGNATURE", "EXCESSIVE_RATE_LIMIT"
+  severity  String   // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  ipAddress String?
+  details   String   // JSON payload of event metadata
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorType String   // "ADMIN", "DEVICE", "SYSTEM", "CLIENT_APP"
+  actorId   String?
+  action    String   // "DEVICE_PAIRED", "KEY_ROTATED", "OTP_VERIFIED"
+  target    String?
+  ipAddress String?
+  metadata  String?  // JSON
+  createdAt DateTime @default(now())
+}

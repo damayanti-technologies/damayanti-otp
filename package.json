@@ -1,0 +1,15 @@
+{
+  "name": "damayanti-otp-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Damayanti OTP – Self-Hosted Authentication Platform",
+  "author": "Damayanti Technologies",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=backend run dev",
+    "build": "npm --workspace=backend run build",
+    "test": "npm --workspace=backend run test"
+  }
+}
