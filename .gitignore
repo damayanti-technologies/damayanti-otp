@@ -53,3 +53,11 @@ android/app/build/
 android/local.properties
 android/*.iml
 android/.idea/
+
+# Android Keystores & Secrets
+*.jks
+*.keystore
+android/keystore/
+keystore/
+*.key
+

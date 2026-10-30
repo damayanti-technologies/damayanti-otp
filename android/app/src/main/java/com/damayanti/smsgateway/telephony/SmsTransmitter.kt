@@ -116,8 +116,11 @@ class SmsTransmitter(private val context: Context) {
                     }
                 }
 
+                // On Android 13+ (Tiramisu, UpsideDownCake, VanillaIceCream), the PendingIntent broadcast
+                // for carrier radio ACK originates from the system telephony process (com.android.phone).
+                // It must be registered as RECEIVER_EXPORTED so Android OS does not drop the carrier callback.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    context.registerReceiver(receiver, IntentFilter(sentAction), Context.RECEIVER_NOT_EXPORTED)
+                    context.registerReceiver(receiver, IntentFilter(sentAction), Context.RECEIVER_EXPORTED)
                 } else {
                     context.registerReceiver(receiver, IntentFilter(sentAction))
                 }
@@ -132,7 +135,10 @@ class SmsTransmitter(private val context: Context) {
                     val smsManager = getSmsManager(subscriptionId)
                     val parts = smsManager.divideMessage(text)
                     if (parts.size > 1) {
-                        val sentIntents = ArrayList<PendingIntent>().apply { add(sentIntent) }
+                        // sendMultipartTextMessage requires sentIntents.size == parts.size
+                        val sentIntents = ArrayList<PendingIntent>().apply {
+                            repeat(parts.size) { add(sentIntent) }
+                        }
                         smsManager.sendMultipartTextMessage(recipient, null, parts, sentIntents, null)
                     } else {
                         smsManager.sendTextMessage(recipient, null, text, sentIntent, null)

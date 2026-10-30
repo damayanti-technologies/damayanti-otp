@@ -94,6 +94,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
 
 ---
 
+## Android Gateway APK Packages (Samsung Galaxy A35)
+
+Ready-to-install packages are generated and stored in `release-apk/`:
+- **Debug APK:** [`release-apk/damayanti-gateway-debug.apk`](file:///C:/Users/savva/.gemini/antigravity/scratch/damayanti-otp/release-apk/damayanti-gateway-debug.apk) (8.14 MB)
+- **Signed Release APK:** [`release-apk/damayanti-gateway-v1.0.0-release.apk`](file:///C:/Users/savva/.gemini/antigravity/scratch/damayanti-otp/release-apk/damayanti-gateway-v1.0.0-release.apk) (6.54 MB)
+- **Installation Guide:** Refer to [`android/README.md`](file:///C:/Users/savva/.gemini/antigravity/scratch/damayanti-otp/android/README.md) for ADB install commands and BSNL SIM configuration.
+
+---
+
 ## All Completed Phases
 
 - [x] **Phase 1 – Project Foundation:** Monorepo, Node.js + Express + TypeScript, Prisma SQLite database, health endpoints, automated testing suite, Windows 11 scripts.
