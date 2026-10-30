@@ -14,7 +14,7 @@ const envSchema = z.object({
 
   ALLOWED_ORIGINS: z
     .string()
-    .default('http://localhost:3000,http://localhost:4000,https://arrout.damayanticrest.online')
+    .default('http://localhost:3000,http://localhost:4000,http://localhost:5000,http://localhost:5173,https://arrout.damayanticrest.online')
     .transform((val) => val.split(',').map((origin) => origin.trim()).filter(Boolean)),
 
   DATABASE_URL: z.string().default('file:./dev.db'),

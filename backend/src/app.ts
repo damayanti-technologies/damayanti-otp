@@ -36,7 +36,7 @@ export function createApp(): Express {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key', 'X-Device-Id', 'X-Device-Signature', 'X-Device-Timestamp'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key', 'X-Device-Id', 'X-Device-Signature', 'X-Device-Timestamp', 'X-Device-Token', 'X-Admin-Secret'],
     })
   );
 
@@ -72,12 +72,24 @@ export function createApp(): Express {
   app.use(deviceRouter);
   app.use(adminRouter);
 
-  // 6. Serve Admin Dashboard statically if built
+  // 6. Serve Live Testing Portal statically if built
+  const portalDistPath = path.resolve(process.cwd(), '../test-portal/dist');
+  if (fs.existsSync(portalDistPath)) {
+    app.use('/portal', express.static(portalDistPath));
+    app.get('/portal*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+        return next();
+      }
+      res.sendFile(path.join(portalDistPath, 'index.html'));
+    });
+  }
+
+  // 7. Serve Admin Dashboard statically if built
   const dashboardDistPath = path.resolve(process.cwd(), '../dashboard/dist');
   if (fs.existsSync(dashboardDistPath)) {
     app.use(express.static(dashboardDistPath));
     app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/portal')) {
         return next();
       }
       res.sendFile(path.join(dashboardDistPath, 'index.html'));

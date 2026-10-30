@@ -5,11 +5,15 @@
   "description": "Damayanti OTP – Self-Hosted Authentication Platform",
   "author": "Damayanti Technologies",
   "workspaces": [
-    "backend"
+    "backend",
+    "dashboard",
+    "test-portal"
   ],
   "scripts": {
     "dev": "npm --workspace=backend run dev",
-    "build": "npm --workspace=backend run build",
+    "portal": "npm --workspace=test-portal run dev",
+    "dashboard": "npm --workspace=dashboard run dev",
+    "build": "npm --workspace=backend run build && npm --workspace=test-portal run build",
     "test": "npm --workspace=backend run test"
   }
 }

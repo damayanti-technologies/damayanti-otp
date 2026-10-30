@@ -70,7 +70,21 @@ export class OtpService {
       };
     }
 
-    // 2. Check Resend Cooldown (60 seconds)
+    // 2. Compliance Lock Check: When in restricted mode, only allow whitelisted test numbers
+    if (env.COMPLIANCE_MODE === 'DEVELOPMENT_RESTRICTED') {
+      const isWhitelisted = env.WHITELISTED_TEST_NUMBERS.includes(phoneNumber);
+      if (!isWhitelisted) {
+        return {
+          success: false,
+          error: {
+            code: ErrorCode.COMPLIANCE_BLOCKED,
+            message: `Compliance Lock: Phone number ${phoneNumber} is not in the authorized test whitelist. Add it to WHITELISTED_TEST_NUMBERS in .env before initiating live SMS dispatch.`,
+          },
+        };
+      }
+    }
+
+    // 3. Check Resend Cooldown (60 seconds)
     const cooldownWindow = new Date(Date.now() - env.OTP_RESEND_COOLDOWN_SECONDS * 1000);
     const recentRequest = await prisma.oTPRequest.findFirst({
       where: {
